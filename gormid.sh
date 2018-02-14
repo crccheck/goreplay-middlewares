@@ -34,6 +34,9 @@ while read line; do
         ;;
     "3")
         log "Request type: Replayed Response"
+        [ -f "$TMP_DIR/$request_id" ] && \
+          rm "$TMP_DIR/$request_id" || \
+          log "$request_id : Replayed response arrived before original response"
         ;;
     *)
         log "Unknown request type $header"
