@@ -1,15 +1,11 @@
 #!/usr/bin/env bash
 #
-# `xxd` utility included into vim-common package
-# It allow hex decoding/encoding
-#
-# This example may broke if you request contains `null` string, you may consider using pipes instead.
-# See: https://github.com/buger/gor/issues/309
-#
+# Based on:
+# https://github.com/buger/goreplay/blob/master/examples/middleware/echo.sh
 
 function log {
     # Logging to stderr, because stdout/stdin used for data transfer
-    >&2 echo "[DEBUG][ECHO] $1"
+    >&2 echo ">>> $1"
 }
 
 while read line; do
@@ -17,8 +13,6 @@ while read line; do
 
     header=$(echo -e "$decoded" | head -n +1)
     payload=$(echo -e "$decoded" | tail -n +2)
-
-    encoded=$(echo -e "$header\n$payload" | xxd -p | tr -d "\\n")
 
     log ""
     log "==================================="
@@ -36,11 +30,11 @@ while read line; do
     *)
         log "Unknown request type $header"
     esac
-    echo "$encoded"
+    echo "$line"
 
-    log "==================================="
+    log "$header"
+    log $payload
 
-    log "Original data: $line"
-    log "Decoded request: $decoded"
-    log "Encoded data: $encoded"
+    # log "Original data: $line"
+    # log "Decoded request: $decoded"
 done;
