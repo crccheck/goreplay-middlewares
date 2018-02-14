@@ -21,22 +21,22 @@ while read line; do
     header_bits=( $header )
     request_id=${header_bits[1]}
 
-    log ""
-    log "==================================="
-
     case ${header_bits[0]} in
     "1")
-        log "Request type: Request"
+        # log "Request type: Request"
         ;;
     "2")
-        log "Request type: Original Response"
+        # log "Request type: Original Response"
         echo "$payload" > $TMP_DIR/$request_id
         ;;
     "3")
-        log "Request type: Replayed Response"
-        [ -f "$TMP_DIR/$request_id" ] && \
-          rm "$TMP_DIR/$request_id" || \
+        # log "Request type: Replayed Response"
+        if [ -f "$TMP_DIR/$request_id" ]; then
+          echo "$payload" | >&2 diff $TMP_DIR/$request_id -
+          rm "$TMP_DIR/$request_id"
+        else
           log "$request_id : Replayed response arrived before original response"
+        fi
         ;;
     *)
         log "Unknown request type $header"
@@ -44,8 +44,4 @@ while read line; do
 
     # REQUIRED. Send to the next middleware/Goreplay
     echo "$line"
-    log "${header_bits[1]}"
-
-    log "$header"
-    log $payload
 done;
