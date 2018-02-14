@@ -17,6 +17,9 @@ while read line; do
 
     header=$(echo -e "$decoded" | head -n +1)
     payload=$(echo -e "$decoded" | tail -n +2)
+    http_body=$(echo "$payload" | sed '1,/^\r\{0,1\}$/d')
+    # Change this: $payload to compare headers too, $http_body for just the body
+    compare="$http_body"
 
     header_bits=( $header )
     request_id=${header_bits[1]}
@@ -27,12 +30,12 @@ while read line; do
         ;;
     "2")
         # log "Request type: Original Response"
-        echo "$payload" > $TMP_DIR/$request_id
+        echo "$compare" > $TMP_DIR/$request_id
         ;;
     "3")
         # log "Request type: Replayed Response"
         if [ -f "$TMP_DIR/$request_id" ]; then
-          echo "$payload" | >&2 diff $TMP_DIR/$request_id -
+          echo "$compare" | >&2 diff --suppress-common-lines --ignore-case --ignore-all-space $TMP_DIR/$request_id -
           rm "$TMP_DIR/$request_id"
         else
           log "$request_id : Replayed response arrived before original response"
