@@ -15,6 +15,24 @@ function log {
   >&2 echo ">>> $1"
 }
 
+statsd_host="${STATSD_HOST:-127.0.0.1}"
+statsd_port="${STATSD_PORT:-8125}"
+
+# Statsd client
+# Example: statsd test.zz.total:1|c
+# based on https://github.com/etsy/statsd/blob/master/examples/statsd-client.sh
+function statsd {
+  # Setup UDP socket with statsd server
+  exec 3<> /dev/udp/$statsd_host/$statsd_port
+
+  # Send data
+  printf "$1" >&3
+
+  # Close UDP socket
+  exec 3<&-
+  exec 3>&-
+}
+
 log "Sending to: $TMP_DIR"
 
 while read line; do
@@ -41,7 +59,11 @@ while read line; do
   "3")
     # log "Request type: Replayed Response"
     if [ -f "$TMP_DIR/$request_id" ]; then
-      echo "$compare" | >&2 diff --suppress-common-lines --ignore-case --ignore-all-space $TMP_DIR/$request_id -
+      statsd "zztest.total:1|c"
+
+      echo "$compare" | \
+        >&2 diff --suppress-common-lines --ignore-case --ignore-all-space $TMP_DIR/$request_id - && \
+        statsd "zztest.pass:1|c"
       rm "$TMP_DIR/$request_id"
     else
       log "$request_id : Replayed response arrived before original response"
