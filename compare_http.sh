@@ -65,13 +65,13 @@ while read line; do
       line1_bits=( $(cat "$TMP_DIR/$request_id.line1") )
       method=${line1_bits[0]:-unknown}
       method=${method,,}
-      # TODO strip GET params
       url_path=${line1_bits[1]:-unknown}
+      url_path=${url_path%%\?*} # Delete GET params
       log "$method $url_path"
-      statsd "zztest.total:1|c#method:$method"
+      statsd "zztest.total:1|c#method:$method,path:$url_path"
       echo "$compare" | \
         >&2 diff --suppress-common-lines --ignore-case --ignore-all-space $TMP_DIR/$request_id - && \
-        statsd "zztest.pass:1|c#method:$method"
+        statsd "zztest.pass:1|c#method:$method,path:$url_path"
       rm "$TMP_DIR/$request_id"
       rm "$TMP_DIR/$request_id.line1"
     else
