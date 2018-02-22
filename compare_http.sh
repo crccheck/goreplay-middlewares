@@ -63,12 +63,14 @@ while read line; do
     # log "Request type: Replayed Response"
     if [ -f "$TMP_DIR/$request_id" ]; then
       line1_bits=( $(cat "$TMP_DIR/$request_id.line1") )
-      # TODO strip GET params
-      log "${line1_bits[0]} ${line1_bits[1]}"
-      statsd "zztest.total:1|c"
+      # TODO fallback
+      method=${line1_bits[0],,}
+      # TODO fallback, strip GET params
+      log "$method ${line1_bits[1]}"
+      statsd "zztest.total:1|c#method:$method"
       echo "$compare" | \
         >&2 diff --suppress-common-lines --ignore-case --ignore-all-space $TMP_DIR/$request_id - && \
-        statsd "zztest.pass:1|c"
+        statsd "zztest.pass:1|c#method:$method"
       rm "$TMP_DIR/$request_id"
       rm "$TMP_DIR/$request_id.line1"
     else
