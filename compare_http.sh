@@ -33,6 +33,9 @@ while read line; do
   case ${header_bits[0]} in
   "1")
     # log "Request type: Request"
+    # Save the url path
+    line1=$(echo -e "$payload" | head -n +1)
+    echo "$line1" > $TMP_DIR/$request_id.line1
     ;;
   "2")
     # log "Request type: Original Response"
@@ -41,8 +44,12 @@ while read line; do
   "3")
     # log "Request type: Replayed Response"
     if [ -f "$TMP_DIR/$request_id" ]; then
+      line1_bits=( $(cat "$TMP_DIR/$request_id.line1") )
+      # TODO strip GET params
+      log "${line1_bits[0]} ${line1_bits[1]}"
       echo "$compare" | >&2 diff --suppress-common-lines --ignore-case --ignore-all-space $TMP_DIR/$request_id -
       rm "$TMP_DIR/$request_id"
+      rm "$TMP_DIR/$request_id.line1"
     else
       log "$request_id : Replayed response arrived before original response"
     fi
