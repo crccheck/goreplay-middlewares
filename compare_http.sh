@@ -15,6 +15,24 @@ function log {
   >&2 echo ">>> $1"
 }
 
+statsd_host="${STATSD_HOST:-127.0.0.1}"
+statsd_port="${STATSD_PORT:-8125}"
+
+# Statsd client
+# Example: statsd test.zz.total:1|c
+# based on https://github.com/etsy/statsd/blob/master/examples/statsd-client.sh
+function statsd {
+  # Setup UDP socket with statsd server
+  exec 3<> /dev/udp/$statsd_host/$statsd_port
+
+  # Send data
+  printf "$1" >&3
+
+  # Close UDP socket
+  exec 3<&-
+  exec 3>&-
+}
+
 log "Sending to: $TMP_DIR"
 
 while read line; do
@@ -33,7 +51,7 @@ while read line; do
   case ${header_bits[0]} in
   "1")
     # log "Request type: Request"
-    # Save the url path
+    # Save the method and path
     line1=$(echo -e "$payload" | head -n +1)
     echo "$line1" > $TMP_DIR/$request_id.line1
     ;;
@@ -45,9 +63,15 @@ while read line; do
     # log "Request type: Replayed Response"
     if [ -f "$TMP_DIR/$request_id" ]; then
       line1_bits=( $(cat "$TMP_DIR/$request_id.line1") )
-      # TODO strip GET params
-      log "${line1_bits[0]} ${line1_bits[1]}"
-      echo "$compare" | >&2 diff --suppress-common-lines --ignore-case --ignore-all-space $TMP_DIR/$request_id -
+      method=${line1_bits[0]:-unknown}
+      method=${method,,}
+      url_path=${line1_bits[1]:-unknown}
+      url_path=${url_path%%\?*} # Delete GET params
+      log "$method $url_path"
+      statsd "zztest.total:1|c#method:$method,path:$url_path"
+      echo "$compare" | \
+        >&2 diff --suppress-common-lines --ignore-case --ignore-all-space $TMP_DIR/$request_id - && \
+        statsd "zztest.pass:1|c#method:$method,path:$url_path"
       rm "$TMP_DIR/$request_id"
       rm "$TMP_DIR/$request_id.line1"
     else
