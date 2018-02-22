@@ -63,8 +63,8 @@ while read line; do
     # log "Request type: Replayed Response"
     if [ -f "$TMP_DIR/$request_id" ]; then
       line1_bits=( $(cat "$TMP_DIR/$request_id.line1") )
-      # TODO fallback
-      method=${line1_bits[0],,}
+      method=${line1_bits[0]:-unknown}
+      method=${method,,}
       # TODO fallback, strip GET params
       log "$method ${line1_bits[1]}"
       statsd "zztest.total:1|c#method:$method"
