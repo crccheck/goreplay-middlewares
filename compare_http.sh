@@ -34,7 +34,6 @@ while read line; do
   "1")
     # log "Request type: Request"
     # Save the url path
-    # TODO strip GET params
     line1=$(echo -e "$payload" | head -n +1)
     echo "$line1" > $TMP_DIR/$request_id.line1
     ;;
@@ -46,6 +45,7 @@ while read line; do
     # log "Request type: Replayed Response"
     if [ -f "$TMP_DIR/$request_id" ]; then
       line1_bits=( $(cat "$TMP_DIR/$request_id.line1") )
+      # TODO strip GET params
       log "${line1_bits[0]} ${line1_bits[1]}"
       echo "$compare" | >&2 diff --suppress-common-lines --ignore-case --ignore-all-space $TMP_DIR/$request_id -
       rm "$TMP_DIR/$request_id"
