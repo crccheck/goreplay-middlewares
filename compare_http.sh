@@ -51,7 +51,7 @@ while read line; do
   case ${header_bits[0]} in
   "1")
     # log "Request type: Request"
-    # Save the url path
+    # Save the method and path
     line1=$(echo -e "$payload" | head -n +1)
     echo "$line1" > $TMP_DIR/$request_id.line1
     ;;
@@ -65,8 +65,9 @@ while read line; do
       line1_bits=( $(cat "$TMP_DIR/$request_id.line1") )
       method=${line1_bits[0]:-unknown}
       method=${method,,}
-      # TODO fallback, strip GET params
-      log "$method ${line1_bits[1]}"
+      # TODO strip GET params
+      url_path=${line1_bits[1]:-unknown}
+      log "$method $url_path"
       statsd "zztest.total:1|c#method:$method"
       echo "$compare" | \
         >&2 diff --suppress-common-lines --ignore-case --ignore-all-space $TMP_DIR/$request_id - && \
