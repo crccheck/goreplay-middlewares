@@ -1,3 +1,4 @@
+const assert = require('assert')
 const gor = require('goreplay_middleware')
 
 gor.init()
@@ -12,6 +13,16 @@ gor.on('request', function(req) {
           gor.httpStatus(resp.http),
           gor.httpStatus(repl.http),
         )
+      } else {
+        try {
+          respData = JSON.parse(gor.httpBody(resp.http))
+          replData = JSON.parse(gor.httpBody(repl.http))
+          assert.deepEqual(respData, replData)
+          // OK
+        } catch (err) {
+          console.error(err.message)
+          // BAD
+        }
       }
       return repl
     })
