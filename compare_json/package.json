@@ -1,0 +1,10 @@
+{
+  "name": "compare_json",
+  "private": "true",
+  "version": "1.0.0",
+  "description": "",
+  "main": "compare_json.js",
+  "dependencies": {
+    "goreplay_middleware": "^0.1.15"
+  }
+}
