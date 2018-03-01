@@ -6,6 +6,7 @@
   "main": "compare_json.js",
   "dependencies": {
     "goreplay_middleware": "^0.1.15",
-    "hot-shots": "^5.2.0"
+    "hot-shots": "^5.2.0",
+    "raven": "^2.4.2"
   }
 }

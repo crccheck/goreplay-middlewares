@@ -2,6 +2,11 @@ const assert = require('assert')
 
 const gor = require('goreplay_middleware')
 const StatsD = require('hot-shots')
+const Raven = require('raven')
+
+if (process.env.SENTRY_DSN) {
+  Raven.config(process.env.SENTRY_DSN)
+}
 
 
 const statsd = new StatsD()
@@ -28,6 +33,7 @@ gor.on('request', function(req) {
         } catch (err) {
           console.error(err.message)
           statsd.increment('zztest.fail.total')
+          Raven.captureException(err)
           // BAD
         }
       }
