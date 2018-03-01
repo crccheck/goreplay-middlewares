@@ -42,17 +42,17 @@ gor.on('request', function(req) {
           assert.deepEqual(respData, replData)
           // OK
         } catch (err) {
-          console.error('MISMATCH:', err.message)
+          console.error('MISMATCH %s: %s', gor.httpPath(req.http), err.message)
           statsd.increment('zztest.fail.total')
           // TODO send more data
           // https://docs.sentry.io/clients/node/usage/#additional-data
           const httpRequest = {
-            headers: httpHeaders(req.http),
+            reqHeaders: httpHeaders(req.http),
+            respHeaders: httpHeaders(resp.http),
+            respReplHeaders: httpHeaders(repl.http),
             method: gor.httpMethod(req.http),
             path: gor.httpPath(req.http),
-            body: gor.httpBody(req.http).toString(),
-            // ip,
-            // user,
+            reqBody: gor.httpBody(req.http).toString(),
           }
           Raven.captureException(err, {
             extra: httpRequest,
