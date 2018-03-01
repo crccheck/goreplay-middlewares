@@ -26,12 +26,14 @@ gor.init()
 gor.on('request', function(req) {
   gor.on('response', req.ID, function(resp) {
     gor.on('replay', req.ID, function(repl) {
-      statsd.increment('zztest.requests.total')
+      const method = gor.httpMethod(req.http)
+      const path = gor.httpPath(req.http)
+
+      statsd.increment('goreplay.requests.total', [`method:${method}`, `path:${path}`])
       if (gor.httpStatus(resp.http) != gor.httpStatus(repl.http)) {
-        statsd.increment('zztest.fail.total')
         console.error(
-          "%s STATUS NOT MATCH: 'Expected %s got '%s'",
-          gor.httpPath(req.http),
+          "%s STATUS MISMATCH: 'Expected %s got '%s'",
+          path,
           gor.httpStatus(resp.http),
           gor.httpStatus(repl.http),
         )
@@ -41,22 +43,19 @@ gor.on('request', function(req) {
           replData = JSON.parse(gor.httpBody(repl.http))
           assert.deepEqual(respData, replData)
           // OK
+          statsd.increment('goreplay.requests.pass', [`method:${method}`, `path:${path}`])
         } catch (err) {
-          console.error('MISMATCH %s: %s', gor.httpPath(req.http), err.message)
-          statsd.increment('zztest.fail.total')
-          // TODO send more data
+          console.error('%s MISMATCH: %s', path, err.message)
           // https://docs.sentry.io/clients/node/usage/#additional-data
-          const httpRequest = {
+          const extra = {
+            method,
+            path,
             reqHeaders: httpHeaders(req.http),
             respHeaders: httpHeaders(resp.http),
             respReplHeaders: httpHeaders(repl.http),
-            method: gor.httpMethod(req.http),
-            path: gor.httpPath(req.http),
             reqBody: gor.httpBody(req.http).toString(),
           }
-          Raven.captureException(err, {
-            extra: httpRequest,
-          })
+          Raven.captureException(err, { extra })
         }
       }
       return repl
