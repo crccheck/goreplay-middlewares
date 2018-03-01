@@ -33,8 +33,19 @@ gor.on('request', function(req) {
         } catch (err) {
           console.error(err.message)
           statsd.increment('zztest.fail.total')
-          Raven.captureException(err)
-          // BAD
+          // TODO send more data
+          // https://docs.sentry.io/clients/node/usage/#additional-data
+          const httpRequest = {
+            // headers,
+            method: gor.httpMethod(req.http),
+            path: gor.httpPath(req.http),
+            body: gor.httpBody(req.http).toString(),
+            // ip,
+            // user,
+          }
+          Raven.captureException(err, {
+            extra: httpRequest,
+          })
         }
       }
       return repl
