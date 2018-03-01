@@ -8,6 +8,17 @@ if (process.env.SENTRY_DSN) {
   Raven.config(process.env.SENTRY_DSN)
 }
 
+function httpHeaders(payload) {
+  const headers = {}
+  const head = payload.slice(0, payload.indexOf('\r\n\r\n')).toString()
+  const raw_headers = head.split('\r\n')
+  raw_headers.shift() // remove first line
+  raw_headers.forEach((line) => {
+    const [header, value] = line.split(':', 2)
+    headers[header] = value.trim()
+  })
+  return headers
+}
 
 const statsd = new StatsD()
 gor.init()
@@ -31,12 +42,12 @@ gor.on('request', function(req) {
           assert.deepEqual(respData, replData)
           // OK
         } catch (err) {
-          console.error(err.message)
+          console.error('MISMATCH:', err.message)
           statsd.increment('zztest.fail.total')
           // TODO send more data
           // https://docs.sentry.io/clients/node/usage/#additional-data
           const httpRequest = {
-            // headers,
+            headers: httpHeaders(req.http),
             method: gor.httpMethod(req.http),
             path: gor.httpPath(req.http),
             body: gor.httpBody(req.http).toString(),
