@@ -3,6 +3,7 @@ const assert = require('assert')
 const gor = require('goreplay_middleware')
 const StatsD = require('hot-shots')
 const Raven = require('raven')
+const { parseResponse } = require('parse-raw-http').parseResponse
 
 if (process.env.SENTRY_DSN) {
   Raven.config(process.env.SENTRY_DSN)
@@ -28,6 +29,8 @@ gor.on('request', function(req) {
     gor.on('replay', req.ID, function(repl) {
       const method = gor.httpMethod(req.http)
       const path = gor.httpPath(req.http)
+      const respObj = parseResponse(resp.http, { decodeContentEncoding: true })
+      const replObj = parseResponse(repl.http, { decodeContentEncoding: true })
 
       statsd.increment('goreplay.requests.total', [`method:${method}`, `path:${path}`])
       if (gor.httpStatus(resp.http) != gor.httpStatus(repl.http)) {
@@ -39,8 +42,8 @@ gor.on('request', function(req) {
         )
       } else {
         try {
-          respData = JSON.parse(gor.httpBody(resp.http))
-          replData = JSON.parse(gor.httpBody(repl.http))
+          respData = JSON.parse(respObj.bodyData)
+          replData = JSON.parse(replObj.bodyData)
           assert.deepEqual(respData, replData)
           // OK
           statsd.increment('goreplay.requests.pass', [`method:${method}`, `path:${path}`])
@@ -51,6 +54,7 @@ gor.on('request', function(req) {
             method,
             path,
             reqHeaders: httpHeaders(req.http),
+            resp: respObj,
             respHeaders: httpHeaders(resp.http),
             respReplHeaders: httpHeaders(repl.http),
             reqBody: gor.httpBody(req.http).toString(),
