@@ -1,9 +1,9 @@
 const assert = require('assert')
+const zlib = require('zlib')
 
 const gor = require('goreplay_middleware')
 const StatsD = require('hot-shots')
 const Raven = require('raven')
-const { parseResponse } = require('parse-raw-http').parseResponse
 
 if (process.env.SENTRY_DSN) {
   Raven.config(process.env.SENTRY_DSN)
@@ -16,9 +16,31 @@ function httpHeaders(payload) {
   raw_headers.shift() // remove first line
   raw_headers.forEach((line) => {
     const [header, value] = line.split(':', 2)
-    headers[header] = value.trim()
+    headers[header.toLowerCase()] = value.trim()
   })
   return headers
+}
+
+function httpBody(payload)/*: string|Buffer */ {
+  const headers = httpHeaders(payload)
+  const bufBody = gor.httpBody(payload)
+  let body = bufBody.toString()
+
+  if (headers['content-encoding'] === 'gzip') {
+    body = zlib.gunzipSync(bufBody)
+  }
+
+  if (headers['transfer-encoding'] === 'chunked') {
+    // CNEE returns Transfer-Encoding: Chunked responses
+    // but `parse-raw-http` can't handle CNEE's output
+    // Assume there's only one line and return that
+    const bodyLines = body.split(/\r\n/)
+    if (bodyLines.length > 2) {
+      return bodyLines[1]
+    }
+  }
+
+  return body
 }
 
 const statsd = new StatsD()
@@ -29,37 +51,38 @@ gor.on('request', function(req) {
     gor.on('replay', req.ID, function(repl) {
       const method = gor.httpMethod(req.http)
       const path = gor.httpPath(req.http)
-      const respObj = parseResponse(resp.http, { decodeContentEncoding: true })
-      const replObj = parseResponse(repl.http, { decodeContentEncoding: true })
+      // https://docs.sentry.io/clients/node/usage/#additional-data
+      const extra = {
+        method,
+        path,
+        request: req.http.toString(),
+        resp: resp.http.toString(),
+        respRepl: repl.http.toString(),
+      }
 
       statsd.increment('goreplay.requests.total', [`method:${method}`, `path:${path}`])
-      if (gor.httpStatus(resp.http) != gor.httpStatus(repl.http)) {
-        console.error(
-          "%s STATUS MISMATCH: 'Expected %s got '%s'",
-          path,
-          gor.httpStatus(resp.http),
-          gor.httpStatus(repl.http),
-        )
+      const respStatus = gor.httpStatus(resp.http)
+      const replStatus = gor.httpStatus(repl.http)
+      if (respStatus != replStatus) {
+        const message = `${path} STATUS MISMATCH: 'Expected '${gor.httpStatus(resp.http)}' got '${gor.httpStatus(repl.http)}'`
+        Raven.captureException(message, {
+          fingerprint: ['{{ default }}', path, respStatus, replStatus],
+          extra,
+        })
       } else {
         try {
-          respData = JSON.parse(respObj.bodyData)
-          replData = JSON.parse(replObj.bodyData)
-          assert.deepEqual(respData, replData)
+          const respBody = httpBody(resp.http)
+          respData = JSON.parse(respBody)
+          replData = JSON.parse(httpBody(repl.http))
+          assert.deepEqual(replData, respData)
           // OK
           statsd.increment('goreplay.requests.pass', [`method:${method}`, `path:${path}`])
         } catch (err) {
           console.error('%s MISMATCH: %s', path, err.message)
-          // https://docs.sentry.io/clients/node/usage/#additional-data
-          const extra = {
-            method,
-            path,
-            reqHeaders: httpHeaders(req.http),
-            resp: respObj,
-            respHeaders: httpHeaders(resp.http),
-            respReplHeaders: httpHeaders(repl.http),
-            reqBody: gor.httpBody(req.http).toString(),
-          }
-          Raven.captureException(err, { extra })
+          Raven.captureException(err, {
+            fingerprint: ['{{ default }}', path, err.message],
+            extra,
+          })
         }
       }
       return repl

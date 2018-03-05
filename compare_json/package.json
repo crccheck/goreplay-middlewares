@@ -7,8 +7,6 @@
   "dependencies": {
     "goreplay_middleware": "^0.1.15",
     "hot-shots": "^5.2.0",
-    "http-parser-js": "^0.4.10",
-    "parse-raw-http": "0.0.1",
     "raven": "^2.4.2"
   }
 }
