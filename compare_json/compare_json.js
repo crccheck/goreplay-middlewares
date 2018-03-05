@@ -31,8 +31,7 @@ function httpBody(payload)/*: string|Buffer */ {
   }
 
   if (headers['transfer-encoding'] === 'chunked') {
-    // CNEE returns Transfer-Encoding: Chunked responses
-    // but `parse-raw-http` can't handle CNEE's output
+    // `parse-raw-http` can't handle all chunked output
     // Assume there's only one line and return that
     const bodyLines = body.split(/\r\n/)
     if (bodyLines.length > 2) {
