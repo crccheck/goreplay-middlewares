@@ -28,12 +28,13 @@ In terminal 3:
 In terminal 4:
 
     ./gor \
-      --input-raw-bpf-filter ":" \  # Only needed for local testing
+      --input-raw-bpf-filter ":" \
       --input-raw :6969 \
       --input-raw-track-response \
       --middleware "/path/to/goreplay-middlewars/compare_http.sh" \
       --output-http http://localhost:9001 \
       --output-http-track-response
 
+`input-raw-bpf-filter` is only needed for local testing
 
 [goreplay]: https://github.com/buger/goreplay
