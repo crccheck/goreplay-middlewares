@@ -39,6 +39,11 @@ function httpBody(payload)/*: string|Buffer */ {
     }
   }
 
+  // WISHLIST get and use charset
+  if (headers['content-type'] && headers['content-type'].includes('application/json')) {
+    body = JSON.parse(body)
+  }
+
   return body
 }
 
@@ -70,10 +75,7 @@ gor.on('request', function(req) {
         })
       } else {
         try {
-          const respBody = httpBody(resp.http)
-          respData = JSON.parse(respBody)
-          replData = JSON.parse(httpBody(repl.http))
-          assert.deepEqual(replData, respData)
+          assert.deepEqual(httpBody(repl.http), httpBody(resp.http))
           // OK
           statsd.increment('goreplay.requests.pass', [`method:${method}`, `path:${path}`])
         } catch (err) {
